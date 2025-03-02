@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memoria Creativa - Entrenamiento Dual N-Back</title>
+    <style>
+        body {
+            font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif;
+            background: linear-gradient(135deg, #8e44ad, #3498db);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            transition: background 0.5s;
+        }
+
+        .container {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 600px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #fff;
+            margin-bottom: 30px;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .game-area {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 30px 0;
+        }
+
+        .cell {
+            position: relative;
+            aspect-ratio: 1;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            overflow: hidden;
+        }
+
+        .cell:hover {
+            transform: scale(1.05);
+        }
+
+        .cell.active {
+            background-color: #f39c12;
+            box-shadow: 0 0 20px #f39c12;
+            transform: scale(1.1);
+            z-index: 1;
+        }
+
+        .cell.match-visual {
+            border: 4px solid #2ecc71;
+        }
+        
+        .cell.match-audio {
+            background-color: #9b59b6;
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        button {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        button:hover {
+            background-color: #c0392b;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .stats {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-around;
+        }
+
+        .stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+
+        .progress {
+            height: 100%;
+            background-color: #2ecc71;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .level-indicator {
+            margin-top: 10px;
+            font-size: 18px;
+        }
+
+        .feedback {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 15px 30px;
+            border-radius: 50px;
+            color: white;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 100;
+        }
+
+        .feedback.correct {
+            background-color: #2ecc71;
+        }
+
+        .feedback.incorrect {
+            background-color: #e74c3c;
+        }
+
+        .feedback.visible {
+            opacity: 1;
+        }
+
+        @media (max-width: 600px) {
+            .game-area {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 10px;
+            }
+            
+            button {
+                font-size: 16px;
+                padding: 10px 15px;
+            }
+        }
+
+        .help-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .help-content {
+            background-color: white;
+            color: #333;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .help-content h2 {
+            color: #8e44ad;
+            margin-top: 0;
+        }
+
+        .close-help {
+            margin-top: 20px;
+        }
+
+        .emoji {
+            font-size: 24px;
+            position: absolute;
+            pointer-events: none;
+        }
+
+        .level-up-animation {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 60px;
+            color: gold;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+            animation: levelUp 1.5s forwards;
+            z-index: 1000;
+        }
+
+        @keyframes levelUp {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+        }
+
+        .settings-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 20px;
+        }
+
+        .settings-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .settings-content {
+            background-color: white;
+            color: #333;
+            width: 80%;
+            max-width: 400px;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .settings-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .settings-group h3 {
+            margin-bottom: 10px;
+            color: #8e44ad;
+        }
+
+        .theme-options {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .theme-option {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .theme-option.active {
+            border-color: #333;
+        }
+
+        .theme-purple {
+            background: linear-gradient(135deg, #8e44ad, #3498db);
+        }
+
+        .theme-orange {
+            background: linear-gradient(135deg, #e67e22, #f39c12);
+        }
+
+        .theme-green {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+        }
+
+        label {
+            display: block;
+            margin: 10px 0;
+        }
+
+        input[type="checkbox"] {
+            margin-right: 10px;
+        }
+
+        select {
+            width: 100%;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <button class="settings-button">⚙️</button>
+    
+    <div class="container">
+        <h1>Memoria Creativa</h1>
+        
+        <div class="game-area">
+            <div class="cell" data-index="0"></div>
+            <div class="cell" data-index="1"></div>
+            <div class="cell" data-index="2"></div>
+            <div class="cell" data-index="3"></div>
+            <div class="cell" data-index="4"></div>
+            <div class="cell" data-index="5"></div>
+            <div class="cell" data-index="6"></div>
+            <div class="cell" data-index="7"></div>
+            <div class="cell" data-index="8"></div>
+        </div>
+        
+        <div class="controls">
+            <div class="level-indicator">Nivel: <span id="current-level">1</span> (N-Back: <span id="n-back-level">1</span>)</div>
+            <div class="progress-bar">
+                <div class="progress" id="level-progress"></div>
+            </div>
+            <button id="start-button">¡Comenzar!</button>
+            <button id="help-button">Cómo Jugar</button>
+        </div>
+        
+        <div class="stats">
+            <div class="stat">
+                <div>Aciertos</div>
+                <div class="stat-value" id="correct-count">0</div>
+            </div>
+            <div class="stat">
+                <div>Racha</div>
+                <div class="stat-value" id="streak-count">0</div>
+            </div>
+            <div class="stat">
+                <div>Máx. Nivel</div>
+                <div class="stat-value" id="max-level">1</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="feedback" id="feedback"></div>
+
+    <div class="help-modal" id="help-modal">
+        <div class="help-content">
+            <h2>Cómo Jugar</h2>
+            <p>Memoria Creativa es un juego basado en el entrenamiento "Dual N-Back" para mejorar tu memoria de trabajo, pero con un toque divertido y creativo.</p>
+            
+            <p><strong>Reglas básicas:</strong></p>
+            <ul>
+                <li>Cada ronda, una celda se iluminará y se escuchará un sonido.</li>
+                <li>Tu tarea es detectar si la posición actual coincide con la posición de hace N pasos.</li>
+                <li>También debes detectar si el sonido actual coincide con el sonido de hace N pasos.</li>
+                <li>Para indicar una coincidencia visual, haz clic en la celda actual.</li>
+                <li>Para indicar una coincidencia auditiva, presiona la tecla Espacio.</li>
+                <li>Puedes tener coincidencias visuales, auditivas, ambas o ninguna en cada turno.</li>
+            </ul>
+            
+            <p>A medida que mejores, el juego aumentará la dificultad, incrementando el valor de N y la velocidad.</p>
+            
+            <button class="close-help">Entendido</button>
+        </div>
+    </div>
+
+    <div class="settings-modal" id="settings-modal">
+        <div class="settings-content">
+            <h2>Configuración</h2>
+            
+            <div class="settings-group">
+                <h3>Tema</h3>
+                <div class="theme-options">
+                    <div class="theme-option theme-purple active" data-theme="purple"></div>
+                    <div class="theme-option theme-orange" data-theme="orange"></div>
+                    <div class="theme-option theme-green" data-theme="green"></div>
+                </div>
+            </div>
+            
+            <div class="settings-group">
+                <h3>Dificultad Inicial</h3>
+                <select id="initial-n">
+                    <option value="1">Fácil (1-back)</option>
+                    <option value="2">Medio (2-back)</option>
+                    <option value="3">Difícil (3-back)</option>
+                </select>
+            </div>
+            
+            <div class="settings-group">
+                <h3>Velocidad</h3>
+                <select id="game-speed">
+                    <option value="3000">Lenta</option>
+                    <option value="2500" selected>Normal</option>
+                    <option value="2000">Rápida</option>
+                    <option value="1500">Muy Rápida</option>
+                </select>
+            </div>
+            
+            <div class="settings-group">
+                <h3>Opciones</h3>
+                <label>
+                    <input type="checkbox" id="sound-effects" checked>
+                    Efectos de sonido
+                </label>
+                <label>
+                    <input type="checkbox" id="animations" checked>
+                    Animaciones
+                </label>
+            </div>
+            
+            <button id="save-settings">Guardar</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Elementos DOM
+            const cells = document.querySelectorAll('.cell');
+            const startButton = document.getElementById('start-button');
+            const helpButton = document.getElementById('help-button');
+            const closeHelpButton = document.querySelector('.close-help');
+            const helpModal = document.getElementById('help-modal');
+            const feedback = document.getElementById('feedback');
+            const correctCount = document.getElementById('correct-count');
+            const streakCount = document.getElementById('streak-count');
+            const maxLevel = document.getElementById('max-level');
+            const currentLevel = document.getElementById('current-level');
+            const nBackLevel = document.getElementById('n-back-level');
+            const levelProgress = document.getElementById('level-progress');
+            const settingsButton = document.querySelector('.settings-button');
+            const settingsModal = document.getElementById('settings-modal');
+            const saveSettingsButton = document.getElementById('save-settings');
+            const themeOptions = document.querySelectorAll('.theme-option');
+            
+            // Variables del juego
+            let gameRunning = false;
+            let sequence = [];
+            let currentIndex = 0;
+            let nBack = 1;
+            let level = 1;
+            let streak = 0;
+            let score = 0;
+            let maxLevelReached = 1;
+            let requiredScore = 10;
+            let visualMatch = false;
+            let audioMatch = false;
+            let userClickedVisual = false;
+            let userPressedSpace = false;
+            let gameInterval;
+            let gameSpeed = 2500;
+            let sounds = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+            let currentSound = '';
+            let lastPlayed = '';
+            
+            // Configuración de audio
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const noteFrequencies = {
+                'C': 261.63, // Do
+                'D': 293.66, // Re
+                'E': 329.63, // Mi
+                'F': 349.23, // Fa
+                'G': 392.00, // Sol
+                'A': 440.00, // La
+                'B': 493.88  // Si
+            };
+            
+            // Inicializar el juego
+            function initGame() {
+                nBack = parseInt(document.getElementById('initial-n').value) || 1;
+                gameSpeed = parseInt(document.getElementById('game-speed').value) || 2500;
+                level = 1;
+                streak = 0;
+                score = 0;
+                sequence = [];
+                currentIndex = 0;
+                updateStats();
+                updateNBackLevel();
+                updateProgressBar();
+                
+                startButton.textContent = '¡Comenzar!';
+                startButton.removeEventListener('click', resetGame);
+                startButton.addEventListener('click', startGame);
+            }
+            
+            // Iniciar el juego
+            function startGame() {
+                if (gameRunning) return;
+                
+                gameRunning = true;
+                startButton.textContent = 'Reiniciar';
+                startButton.removeEventListener('click', startGame);
+                startButton.addEventListener('click', resetGame);
+                
+                // Generar secuencia inicial
+                sequence = [];
+                for (let i = 0; i < nBack + 3; i++) {
+                    addNewStep();
+                }
+                
+                currentIndex = 0;
+                nextTurn();
+                
+                // Iniciar intervalo de juego
+                gameInterval = setInterval(() => {
+                    evaluateTurn();
+                    currentIndex++;
+                    if (currentIndex >= sequence.length) {
+                        addNewStep();
+                    }
+                    nextTurn();
+                }, gameSpeed);
+            }
+            
+            // Resetear el juego
+            function resetGame() {
+                clearInterval(gameInterval);
+                gameRunning = false;
+                cells.forEach(cell => {
+                    cell.classList.remove('active', 'match-visual', 'match-audio');
+                });
+                initGame();
+            }
+            
+            // Añadir un nuevo paso a la secuencia
+            function addNewStep() {
+                const cellIndex = Math.floor(Math.random() * 9);
+                const soundIndex = Math.floor(Math.random() * sounds.length);
+                sequence.push({
+                    cellIndex: cellIndex,
+                    sound: sounds[soundIndex]
+                });
+            }
+            
+            // Mostrar el turno actual
+            function nextTurn() {
+                // Limpiar clases anteriores
+                cells.forEach(cell => {
+                    cell.classList.remove('active', 'match-visual', 'match-audio');
+                });
+                
+                const currentStep = sequence[currentIndex];
+                const activeCell = document.querySelector(`.cell[data-index="${currentStep.cellIndex}"]`);
+                activeCell.classList.add('active');
+                
+                // Reproducir sonido
+                playNote(currentStep.sound);
+                currentSound = currentStep.sound;
+                
+                // Determinar si hay coincidencias
+                if (currentIndex >= nBack) {
+                    const nBackStep = sequence[currentIndex - nBack];
+                    visualMatch = currentStep.cellIndex === nBackStep.cellIndex;
+                    audioMatch = currentStep.sound === nBackStep.sound;
+                } else {
+                    visualMatch = false;
+                    audioMatch = false;
+                }
+                
+                // Reiniciar entradas del usuario
+                userClickedVisual = false;
+                userPressedSpace = false;
+            }
+            
+            // Evaluar las respuestas del usuario
+            function evaluateTurn() {
+                if (currentIndex < nBack) return;
+                
+                const correctVisual = (visualMatch && userClickedVisual) || (!visualMatch && !userClickedVisual);
+                const correctAudio = (audioMatch && userPressedSpace) || (!audioMatch && !userPressedSpace);
+                
+                if (correctVisual && correctAudio) {
+                    showFeedback('¡Correcto!', 'correct');
+                    score++;
+                    streak++;
+                    if (streak > 3 && score >= requiredScore) {
+                        levelUp();
+                    }
+                } else {
+                    showFeedback('¡Incorrecto!', 'incorrect');
+                    streak = 0;
+                }
+                
+                updateStats();
+                updateProgressBar();
+            }
+            
+            // Subir de nivel
+            function levelUp() {
+                level++;
+                if (level > maxLevelReached) {
+                    maxLevelReached = level;
+                }
+                
+                // Mostrar animación de subida de nivel
+                const levelUpMsg = document.createElement('div');
+                levelUpMsg.className = 'level-up-animation';
+                levelUpMsg.textContent = '¡NIVEL ' + level + '!';
+                document.body.appendChild(levelUpMsg);
+                
+                setTimeout(() => {
+                    document.body.removeChild(levelUpMsg);
+                }, 1500);
+                
+                // Aumentar dificultad
+                if (level % 3 === 0) {
+                    nBack++;
+                    updateNBackLevel();
+                }
+                
+                score = 0;
+                requiredScore = 10 + (level * 2);
+                
+                // Reducir velocidad del juego si es apropiado
+                if (level % 2 === 0 && gameSpeed > 1000) {
+                    gameSpeed -= 100;
+                    clearInterval(gameInterval);
+                    gameInterval = setInterval(() => {
+                        evaluateTurn();
+                        currentIndex++;
+                        if (currentIndex >= sequence.length) {
+                            addNewStep();
+                        }
+                        nextTurn();
+                    }, gameSpeed);
+                }
+                
+                updateStats();
+                updateProgressBar();
+            }
+            
+            // Mostrar retroalimentación visual
+            function showFeedback(message, type) {
+                feedback.textContent = message;
+                feedback.className = 'feedback ' + type + ' visible';
+                
+                setTimeout(() => {
+                    feedback.classList.remove('visible');
+                }, 1000);
+            }
+            
+            // Actualizar estadísticas
+            function updateStats() {
+                correctCount.textContent = score;
+                streakCount.textContent = streak;
+                maxLevel.textContent = maxLevelReached;
+                currentLevel.textContent = level;
+            }
+            
+            // Actualizar nivel de N-Back
+            function updateNBackLevel() {
+                nBackLevel.textContent = nBack;
+            }
+            
+            // Actualizar barra de progreso
+            function updateProgressBar() {
+                const progress = (score / requiredScore) * 100;
+                levelProgress.style.width = progress + '%';
+            }
+            
+            // Reproducir nota musical
+            function playNote(note) {
+                if (!document.getElementById('sound-effects').checked) return;
+                
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.value = noteFrequencies[note];
+                
+                gainNode.gain.value = 0.3;
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.start();
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.5);
+                oscillator.stop(audioContext.currentTime + 0.5);
+                
+                lastPlayed = note;
+            }
+            
+            // Event Listeners
+            cells.forEach(cell => {
+                cell.addEventListener('click', function() {
+                    if (!gameRunning) return;
+                    
+                    userClickedVisual = true;
+                    this.classList.add('match-visual');
+                });
+            });
+            
+            document.addEventListener('keydown', function(e) {
+                if (!gameRunning) return;
+                
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    userPressedSpace = true;
+                    const activeCell = document.querySelector('.cell.active');
+                    if (activeCell) {
+                        activeCell.classList.add('match-audio');
+                    }
+                }
+            });
+            
+            helpButton.addEventListener('click', function() {
+                helpModal.style.display = 'flex';
+            });
+            
+            closeHelpButton.addEventListener('click', function() {
+                helpModal.style.display = 'none';
+            });
+            
+            settingsButton.addEventListener('click', function() {
+                settingsModal.style.display = 'flex';
+            });
+            
+            saveSettingsButton.addEventListener('click', function() {
+                settingsModal.style.display = 'none';
+                initGame();
+            });
+            
+            themeOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    themeOptions.forEach(opt => opt.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    const theme = this.getAttribute('data-theme');
+                    switch(theme) {
+                        case 'purple':
+                            document.body.style.background = 'linear-gradient(135deg, #8e44ad, #3498db)';
+                            break;
+                        case 'orange':
+                            document.body.style.background = 'linear-gradient(135deg, #e67e22, #f39c12)';
+                            break;
+                        case 'green':
+                            document.body.style.background = 'linear-gradient(135deg, #27ae60, #2ecc71)';
+                            break;
+                    }
+                });
+            });
+            
+            // Funciones para emojis animados (efecto visual divertido)
+            function createFloatingEmoji(emoji, x, y) {
+                if (!document.getElementById('animations').checked) return;
+                
+                const emojiElement = document.createElement('div');
+                emojiElement.className = 'emoji';
+                emojiElement.textContent = emoji;
+                emojiElement.style.left = x + 'px';
+                emojiElement.style.top = y + 'px';
+                
+                document.body.appendChild(emojiElement);
+                
+                // Animación
+                let posY = y;
+                let posX = x;
+                let opacity = 1;
+                let angle = Math.random() * Math.PI * 2;
+                
+                const moveEmoji = setInterval(() => {
+                    posY -= 2;
+                    posX += Math.sin(angle) * 2;
+                    opacity -= 0.02;
+                    
+                    emojiElement.style.top = posY + 'px';
+                    emojiElement.style.left = posX + 'px';
+                    emojiElement.style.opacity = opacity;
+                    
+                    if (opacity <= 0) {
+                        clearInterval(moveEmoji);
+                        document.body.removeChild(emojiElement);
+                    }
+                }, 30);
+            }
+            
+            // Eventos para emojis al hacer clic
+            cells.forEach(cell => {
+                cell.addEventListener('click', function(e) {
+                    if (!gameRunning) return;
+                    
+                    const emojis = ['🧠', '💡', '✨', '🔍', '🎯'];
+                    const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+                    createFloatingEmoji(randomEmoji, e.clientX, e.clientY);
+                });
+            });
+            
+            // Cerrar modales al hacer clic afuera
+            window.addEventListener('click', function(e) {
+                if (e.target === helpModal) {
+                    helpModal.style.display = 'none';
+                }
+                if (e.target === settingsModal) {
+                    settingsModal.style.display = 'none';
+                }
+            });
+            
+            // Inicializar juego al cargar
+            initGame();
+        });
+    </script>
+</body>
+</html>
